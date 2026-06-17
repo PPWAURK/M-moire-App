@@ -7,14 +7,18 @@ private enum SidebarSelection: Hashable {
     case all
     case type(VaultItemType)
     case accountCategory(AccountCategory)
+    case library(LibraryAssetKind)
 }
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.meimoireSkin) private var skin
     @Query(sort: \VaultItem.updatedAt, order: .reverse) private var items: [VaultItem]
+    @Query(sort: \LibraryAsset.updatedAt, order: .reverse) private var libraryAssets: [LibraryAsset]
+    @Query(sort: \LibraryCategory.sortOrder, order: .forward) private var libraryCategories: [LibraryCategory]
     @State private var selectedSection: SidebarSelection = .all
     @State private var selectedItem: VaultItem?
+    @State private var selectedAsset: LibraryAsset?
     @State private var searchText = ""
     @State private var selectedTag: String?
     @State private var isShowingEditor = false
@@ -42,12 +46,21 @@ struct ContentView: View {
                 }
                 .help("Verrouiller l’accès aux mots de passe")
 
-                Button {
-                    newItem(defaultType: currentType ?? .account)
-                } label: {
-                    Label("Nouveau", systemImage: "plus")
+                if let currentLibraryKind {
+                    Button {
+                        NotificationCenter.default.post(name: .meimoireImportAsset, object: currentLibraryKind.rawValue)
+                    } label: {
+                        Label("Importer", systemImage: "tray.and.arrow.down")
+                    }
+                    .help("Importer dans la bibliothèque")
+                } else {
+                    Button {
+                        newItem(defaultType: currentType ?? .account)
+                    } label: {
+                        Label("Nouveau", systemImage: "plus")
+                    }
+                    .help("Créer un élément")
                 }
-                .help("Créer un élément")
             }
         }
         .sheet(isPresented: $isShowingEditor) {
@@ -72,7 +85,16 @@ struct ContentView: View {
             type
         case .accountCategory:
             .account
+        case .library:
+            nil
         }
+    }
+
+    private var currentLibraryKind: LibraryAssetKind? {
+        if case .library(let kind) = selectedSection {
+            return kind
+        }
+        return nil
     }
 
     private var selectedAccountCategory: AccountCategory? {
@@ -112,6 +134,17 @@ struct ContentView: View {
                         Image(systemName: type.systemImage)
                     }
                     .tag(SidebarSelection.type(type))
+                }
+            }
+
+            Section("Bibliothèque") {
+                ForEach(LibraryAssetKind.allCases) { kind in
+                    Label {
+                        SidebarText(title: kind.displayName, count: count(for: kind))
+                    } icon: {
+                        Image(systemName: kind.systemImage)
+                    }
+                    .tag(SidebarSelection.library(kind))
                 }
             }
 
@@ -176,40 +209,51 @@ struct ContentView: View {
     }
 
     private var itemList: some View {
-        VStack(spacing: 0) {
-            listHeader
-
-            if shouldShowGroupedAccounts {
-                groupedAccountList
-            } else if filteredItems.isEmpty {
-                ContentUnavailableView(emptyTitle, systemImage: emptyImage, description: Text(emptyDescription))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if let currentLibraryKind {
+                LibraryView(
+                    kind: currentLibraryKind,
+                    assets: libraryAssets,
+                    categories: libraryCategories,
+                    selectedAsset: $selectedAsset
+                )
             } else {
-                List(filteredItems, selection: $selectedItem) { item in
-                    ItemRow(
-                        item: item,
-                        isSelected: selectedItem?.id == item.id,
-                        isUsernameCopied: copiedUsernameItemID == item.id,
-                        onCopyUsername: { copyUsername(for: item) }
-                    )
-                        .tag(item)
-                        .contextMenu {
-                            Button("Modifier") {
-                                edit(item)
-                            }
-                            Button("Supprimer", role: .destructive) {
-                                delete(item)
-                            }
+                VStack(spacing: 0) {
+                    listHeader
+
+                    if shouldShowGroupedAccounts {
+                        groupedAccountList
+                    } else if filteredItems.isEmpty {
+                        ContentUnavailableView(emptyTitle, systemImage: emptyImage, description: Text(emptyDescription))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List(filteredItems, selection: $selectedItem) { item in
+                            ItemRow(
+                                item: item,
+                                isSelected: selectedItem?.id == item.id,
+                                isUsernameCopied: copiedUsernameItemID == item.id,
+                                onCopyUsername: { copyUsername(for: item) }
+                            )
+                                .tag(item)
+                                .contextMenu {
+                                    Button("Modifier") {
+                                        edit(item)
+                                    }
+                                    Button("Supprimer", role: .destructive) {
+                                        delete(item)
+                                    }
+                                }
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .background(skin.listColor)
+                    }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
                 .background(skin.listColor)
             }
         }
-        .background(skin.listColor)
         .navigationTitle(sectionTitle)
-        .frame(minWidth: 360)
+        .frame(minWidth: currentLibraryKind == nil ? 360 : 560)
     }
 
     private var shouldShowGroupedAccounts: Bool {
@@ -308,7 +352,19 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detailPane: some View {
-        if let selectedItem {
+        if let currentLibraryKind, let selectedAsset, selectedAsset.kind == currentLibraryKind {
+            AssetDetailView(
+                asset: selectedAsset,
+                categories: libraryCategories,
+                onDelete: { deleteAsset(selectedAsset) }
+            )
+        } else if let currentLibraryKind {
+            ContentUnavailableView(
+                currentLibraryKind == .font ? "Sélectionnez une police" : "Sélectionnez un élément image",
+                systemImage: currentLibraryKind.systemImage,
+                description: Text("L’aperçu, les métadonnées et les catégories s’affichent ici.")
+            )
+        } else if let selectedItem {
             ItemDetailView(
                 item: selectedItem,
                 secretStore: secretStore,
@@ -329,6 +385,8 @@ struct ContentView: View {
             type.displayName
         case .accountCategory(let category):
             category.displayName
+        case .library(let kind):
+            kind.displayName
         }
     }
 
@@ -346,6 +404,10 @@ struct ContentView: View {
 
     private func count(for type: VaultItemType) -> Int {
         items.filter { $0.type == type && !$0.isDeleted && !$0.isArchived }.count
+    }
+
+    private func count(for kind: LibraryAssetKind) -> Int {
+        libraryAssets.filter { $0.kind == kind }.count
     }
 
     private var accountCount: Int {
@@ -412,6 +474,15 @@ struct ContentView: View {
         modelContext.delete(item)
         if selectedItem?.id == item.id {
             selectedItem = nil
+        }
+        try? modelContext.save()
+    }
+
+    private func deleteAsset(_ asset: LibraryAsset) {
+        try? AssetFileStore().deleteFile(for: asset)
+        modelContext.delete(asset)
+        if selectedAsset?.id == asset.id {
+            selectedAsset = nil
         }
         try? modelContext.save()
     }

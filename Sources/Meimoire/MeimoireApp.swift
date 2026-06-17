@@ -10,7 +10,7 @@ struct MeimoireApp: App {
 
     init() {
         do {
-            container = try ModelContainer(for: VaultItem.self)
+            container = try ModelContainer(for: VaultItem.self, LibraryAsset.self, LibraryCategory.self)
         } catch {
             fatalError("Impossible de créer la base de données locale : \(error)")
         }
@@ -49,4 +49,5 @@ struct MeimoireApp: App {
 
 extension Notification.Name {
     static let meimoireCreateItem = Notification.Name("meimoireCreateItem")
+    static let meimoireImportAsset = Notification.Name("meimoireImportAsset")
 }

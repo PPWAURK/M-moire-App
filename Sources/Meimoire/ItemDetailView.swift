@@ -217,7 +217,7 @@ struct ItemDetailView: View {
     }
 }
 
-private struct DetailPanel<Content: View>: View {
+struct DetailPanel<Content: View>: View {
     @Environment(\.meimoireSkin) private var skin
     let title: String
     let systemImage: String
@@ -240,7 +240,7 @@ private struct DetailPanel<Content: View>: View {
     }
 }
 
-private struct DetailLine: View {
+struct DetailLine: View {
     @Environment(\.meimoireSkin) private var skin
     let label: String
     let value: String
@@ -257,7 +257,7 @@ private struct DetailLine: View {
     }
 }
 
-private struct FlowTags: View {
+struct FlowTags: View {
     @Environment(\.meimoireSkin) private var skin
     let tags: [String]
 

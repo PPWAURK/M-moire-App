@@ -16,6 +16,9 @@ The app is French-first, Mac-first, and built with SwiftUI, SwiftData, Apple Key
 - **Username copy**: copy usernames from account rows with quick feedback.
 - **Inspiration workspace**: write Markdown documents with a native editor, live preview, outline, templates, search, stats, and autosave.
 - **URL library**: store links with notes, tags, search, and browser opening.
+- **Font library**: import `.ttf`, `.otf`, and `.ttc` files into a private local font collection.
+- **Image asset library**: import `.png`, `.jpg`, `.jpeg`, `.heic`, `.webp`, `.pdf`, and `.svg` assets into a private local image collection.
+- **Custom library categories**: organize fonts and image assets with separate user-defined categories.
 - **Built-in skins**: Meimoire Ink, Meimoire Paper, Mint Vault, and Coral Notes.
 - **Local-first search**: search across titles, usernames, URLs, notes, tags, and account category names.
 
@@ -26,6 +29,7 @@ Meimoire uses a three-pane macOS layout:
 - Sidebar: all items, item types, account categories, and tags.
 - List: searchable items or collapsible account category groups.
 - Detail: account security panel, URL details, or the inspiration document workspace.
+- Library: font and image asset grids with category filters and editable metadata.
 
 ## Installation
 
@@ -85,6 +89,7 @@ dist/Meimoire.dmg
 - Password values are never saved in SwiftData.
 - Password values are not logged or used in UI previews.
 - Account metadata, inspirations, URLs, tags, and timestamps are stored locally with SwiftData.
+- Imported fonts and image assets are copied into Meimoire’s Application Support folder; SwiftData stores metadata and relative file references.
 - Password reveal and copy actions require local authentication.
 - Synchronizable Keychain storage depends on Apple signing and iCloud Keychain capabilities. Without those capabilities, the app continues to work with the local Keychain.
 
@@ -96,6 +101,7 @@ Included in this MVP:
 - Local account/password storage
 - Inspiration document writing
 - URL storage
+- Font and image asset libraries
 - Built-in skins
 - DMG packaging
 
